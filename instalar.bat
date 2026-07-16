@@ -63,9 +63,20 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo Comprobando la instalacion...
+venv\Scripts\python -c "import cv2, camelot, pandas, streamlit, openpyxl"
+if errorlevel 1 (
+    echo.
+    echo AVISO: las librerias se instalaron pero no pueden cargarse.
+    echo Es probable que falte "Microsoft Visual C++ Redistributable".
+    echo Consulta la seccion "Problemas comunes" del README.md.
+    pause
+    exit /b 1
+)
+
 echo.
 echo ============================================================
-echo  Instalacion completada.
+echo  Instalacion completada y verificada.
 echo  Usa "iniciar.bat" para abrir la aplicacion.
 echo ============================================================
 pause

@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+import traceback
 
 import streamlit as st
 
@@ -34,11 +35,21 @@ if archivo is not None:
     try:
         with st.spinner("Analizando el PDF y buscando tablas…"):
             tablas = procesar_pdf(archivo.getvalue())
-    except Exception:
-        st.error(
-            "No se pudo procesar el PDF. Comprueba que el archivo no esté "
-            "dañado ni protegido con contraseña."
-        )
+    except Exception as exc:
+        if isinstance(exc, ImportError) or "DLL" in str(exc):
+            st.error(
+                "Falta un componente del sistema necesario para analizar "
+                "PDFs (Microsoft Visual C++ Redistributable). Consulta la "
+                "sección «Problemas comunes» del README."
+            )
+        else:
+            st.error(
+                "Ocurrió un error al procesar el PDF. Si el archivo se abre "
+                "bien en otros programas, copia los detalles técnicos de "
+                "abajo y envíalos al responsable de la aplicación."
+            )
+        with st.expander("Detalles técnicos del error"):
+            st.code(traceback.format_exc())
         st.stop()
 
     if not tablas:

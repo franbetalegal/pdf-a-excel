@@ -31,6 +31,16 @@ El script instala Python si hace falta (solo en tu perfil de usuario) y crea un 
 
 Para cerrar la aplicación, cierra la ventana del terminal.
 
+## Actualizar a una nueva versión
+
+En Windows, ejecuta `actualizar.bat`: descarga la última versión desde GitHub y la aplica sin tener que reinstalar nada.
+
+## Problemas comunes
+
+**«Falta un componente del sistema (Microsoft Visual C++ Redistributable)»** o un error que menciona «DLL load failed» al analizar un PDF: al ordenador le falta un componente estándar de Microsoft que algunas librerías necesitan. Se instala una sola vez desde [aka.ms/vs/17/release/vc_redist.x64.exe](https://aka.ms/vs/17/release/vc_redist.x64.exe) — **este componente sí requiere permisos de administrador**, así que pídeselo al departamento de informática si tu usuario no los tiene.
+
+**Cualquier otro error al analizar un PDF:** despliega «Detalles técnicos del error» en la propia aplicación, copia el texto y envíaselo al responsable de la aplicación.
+
 ## Limitaciones
 
 - Solo detecta tablas **con bordes/líneas visibles** (modo *lattice* de Camelot). Los datos alineados sin rejilla no se detectan.
