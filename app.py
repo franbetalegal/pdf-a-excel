@@ -1,5 +1,6 @@
 """Convertidor de PDF a Excel — interfaz web con Streamlit."""
 
+import gc
 import os
 import tempfile
 import traceback
@@ -26,7 +27,14 @@ def procesar_pdf(contenido: bytes) -> list[dict]:
     try:
         return extraer_tablas(ruta)
     finally:
-        os.unlink(ruta)
+        # En Windows la librería de PDF puede mantener el archivo abierto;
+        # liberamos sus objetos y, si sigue bloqueado, lo dejamos en la
+        # carpeta temporal en vez de fallar.
+        gc.collect()
+        try:
+            os.unlink(ruta)
+        except OSError:
+            pass
 
 
 archivo = st.file_uploader("Sube tu PDF", type="pdf")
