@@ -1,0 +1,15 @@
+# Entorno virtual (se regenera con instalar.command / instalar.bat)
+venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Streamlit
+.streamlit/secrets.toml
+
+# macOS
+.DS_Store
+
+# Configuracion local de Claude Code
+.claude/settings.local.json

@@ -1,0 +1,6 @@
+streamlit>=1.40
+camelot-py>=1.0
+pypdfium2>=4.30
+opencv-python-headless>=4.10
+pandas>=2.2
+openpyxl>=3.1
