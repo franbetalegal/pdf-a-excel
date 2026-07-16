@@ -83,7 +83,7 @@ if archivo is not None:
                 value=True,
                 key=f"incluir_{t['indice']}",
             )
-            st.dataframe(t["df"], use_container_width=True)
+            st.dataframe(t["df"], width="stretch")
         if incluir:
             seleccionadas.append(t)
 
