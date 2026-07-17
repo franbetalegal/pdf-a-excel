@@ -33,9 +33,9 @@ Para cerrar la aplicación, cierra la ventana del terminal.
 
 ## Actualizar a una nueva versión
 
-La aplicación comprueba al arrancar si hay una versión nueva en GitHub y, si la hay, muestra un aviso con el botón **«Actualizar y reiniciar»**: la aplicación se cierra, se actualiza sola y vuelve a abrirse (requiere internet; si no hay conexión, simplemente no aparece el aviso).
+La aplicación comprueba al arrancar si hay una versión nueva en GitHub y, si la hay, muestra un aviso con el botón **«Actualizar y reiniciar»** (en Windows y macOS): la aplicación se cierra, se actualiza sola y vuelve a abrirse (requiere internet; si no hay conexión, simplemente no aparece el aviso). La versión instalada se muestra en la esquina superior derecha.
 
-También puedes actualizar manualmente ejecutando `actualizar.bat` con la aplicación cerrada.
+También puedes actualizar manualmente con la aplicación cerrada: `actualizar.bat` (Windows) o `actualizar.command` (macOS).
 
 ## Problemas comunes
 

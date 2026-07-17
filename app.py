@@ -49,34 +49,55 @@ def version_remota() -> str | None:
     return None
 
 
+def _tupla_version(version: str | None) -> tuple[int, ...] | None:
+    """'1.4.0' -> (1, 4, 0); None si no es un número de versión válido."""
+    if not version:
+        return None
+    try:
+        return tuple(int(parte) for parte in version.strip().split("."))
+    except ValueError:
+        return None
+
+
+def lanzar_actualizacion() -> None:
+    """Aplica la actualización fuera de la app, con la app cerrada,
+    y la vuelve a arrancar al terminar."""
+    if sys.platform == "win32":
+        subprocess.Popen(
+            ["cmd", "/c", "start", "", "actualizar.bat", "/reiniciar"],
+            cwd=CARPETA_APP,
+        )
+    else:
+        subprocess.Popen(
+            ["bash", str(CARPETA_APP / "actualizar.command"), "--reiniciar"],
+            cwd=CARPETA_APP,
+            start_new_session=True,
+        )
+    st.info(
+        "Actualizando… esta ventana se quedará sin conexión unos "
+        "segundos y la aplicación volverá a abrirse sola."
+    )
+    time.sleep(2)
+    os._exit(0)
+
+
 def avisar_si_hay_actualizacion() -> None:
     remota = version_remota()
     local = version_local()
-    if not remota or remota == local:
+    t_remota = _tupla_version(remota)
+    t_local = _tupla_version(local)
+    if not t_remota:
+        return
+    # Solo avisar si la publicada es realmente MÁS NUEVA que la instalada
+    # (una copia sin numerar se considera anticuada).
+    if t_local and t_remota <= t_local:
         return
     st.warning(
         f"🔔 Hay una versión nueva disponible (**{remota}**; "
         f"esta es la {local or 'sin numerar'})."
     )
-    if sys.platform == "win32":
-        if st.button("🔄 Actualizar y reiniciar"):
-            # La actualización se aplica fuera de la app (actualizar.bat)
-            # con la app cerrada; el .bat vuelve a lanzar iniciar.bat.
-            subprocess.Popen(
-                ["cmd", "/c", "start", "", "actualizar.bat", "/reiniciar"],
-                cwd=CARPETA_APP,
-            )
-            st.info(
-                "Actualizando… esta ventana se quedará sin conexión unos "
-                "segundos y la aplicación volverá a abrirse sola."
-            )
-            time.sleep(2)
-            os._exit(0)
-    else:
-        st.caption(
-            "Para actualizar: cierra la aplicación y descarga la última "
-            "versión del repositorio."
-        )
+    if st.button("🔄 Actualizar y reiniciar"):
+        lanzar_actualizacion()
 
 
 @st.cache_data(show_spinner=False)
@@ -114,7 +135,15 @@ def mostrar_error_de_analisis(exc: Exception) -> None:
         st.code("".join(traceback.format_exception(exc)))
 
 
-st.title("📄 Convertidor de PDF a Excel")
+col_titulo, col_version = st.columns([5, 1], vertical_alignment="center")
+with col_titulo:
+    st.title("📄 Convertidor de PDF a Excel")
+with col_version:
+    st.markdown(
+        "<div style='text-align: right; color: gray;'>"
+        f"Versión {version_local() or '—'}</div>",
+        unsafe_allow_html=True,
+    )
 st.markdown(
     "Sube uno o varios PDF con tablas **con bordes visibles**, revisa las "
     "tablas detectadas y descarga el resultado en Excel."
