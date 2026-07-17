@@ -22,6 +22,13 @@ if exist venv\Scripts\python.exe (
     venv\Scripts\python -m pip install -q -r requirements.txt
 )
 
+REM Evita que Streamlit pida un email en el primer arranque.
+if not exist "%USERPROFILE%\.streamlit" mkdir "%USERPROFILE%\.streamlit"
+if not exist "%USERPROFILE%\.streamlit\credentials.toml" (
+    echo [general]> "%USERPROFILE%\.streamlit\credentials.toml"
+    echo email = "">> "%USERPROFILE%\.streamlit\credentials.toml"
+)
+
 echo.
 echo Actualizacion completada.
 

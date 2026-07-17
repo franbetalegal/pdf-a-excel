@@ -16,5 +16,11 @@ echo "Instalando dependencias (puede tardar unos minutos)…"
 ./venv/bin/pip install --upgrade pip
 ./venv/bin/pip install -r requirements.txt
 
+# Evita que Streamlit pida un email en el primer arranque.
+if [ ! -f "$HOME/.streamlit/credentials.toml" ]; then
+    mkdir -p "$HOME/.streamlit"
+    printf '[general]\nemail = ""\n' > "$HOME/.streamlit/credentials.toml"
+fi
+
 echo ""
 echo "✅ Instalación completada. Usa 'iniciar.command' para abrir la aplicación."

@@ -63,6 +63,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Evita que Streamlit pida un email en el primer arranque.
+if not exist "%USERPROFILE%\.streamlit" mkdir "%USERPROFILE%\.streamlit"
+if not exist "%USERPROFILE%\.streamlit\credentials.toml" (
+    echo [general]> "%USERPROFILE%\.streamlit\credentials.toml"
+    echo email = "">> "%USERPROFILE%\.streamlit\credentials.toml"
+)
+
 echo Comprobando la instalacion...
 venv\Scripts\python -c "import cv2, camelot, pandas, streamlit, openpyxl"
 if errorlevel 1 (
