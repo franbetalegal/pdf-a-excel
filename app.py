@@ -14,7 +14,12 @@ from pathlib import Path
 import requests
 import streamlit as st
 
-from exporter import MODO_HOJA_POR_TABLA, MODO_HOJA_UNICA, generar_excel
+from exporter import (
+    MODO_HOJA_POR_TABLA,
+    MODO_HOJA_UNICA,
+    generar_excel,
+    generar_excel_combinado,
+)
 from extractor import extraer_tablas
 
 st.set_page_config(page_title="PDF a Excel", page_icon="📄", layout="wide")
@@ -181,34 +186,62 @@ if archivos:
         else MODO_HOJA_UNICA
     )
 
+    combinar = False
+    if len(seleccion_por_archivo) > 1:
+        agrupacion = st.radio(
+            "¿Cómo agrupar los resultados?",
+            options=[
+                f"Un Excel por PDF ({len(seleccion_por_archivo)} archivos)",
+                "Un único Excel con todo",
+            ],
+            horizontal=True,
+        )
+        combinar = agrupacion == "Un único Excel con todo"
+
     st.subheader("3. Descarga")
-    excels: list[tuple[str, bytes]] = []
-    for nombre_pdf, tablas in seleccion_por_archivo:
-        nombre_salida = os.path.splitext(nombre_pdf)[0] + ".xlsx"
-        excels.append((nombre_salida, generar_excel(tablas, modo).getvalue()))
+    MIME_XLSX = (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
-    for i, (nombre_salida, datos) in enumerate(excels):
+    if combinar:
+        datos = generar_excel_combinado(seleccion_por_archivo, modo)
         st.download_button(
-            label=f"⬇️ Descargar {nombre_salida}",
+            label="⬇️ Descargar tablas_convertidas.xlsx",
             data=datos,
-            file_name=nombre_salida,
-            mime="application/vnd.openxmlformats-officedocument"
-            ".spreadsheetml.sheet",
-            type="primary" if len(excels) == 1 else "secondary",
-            key=f"descargar_{i}",
-        )
-
-    if len(excels) > 1:
-        buffer_zip = BytesIO()
-        with zipfile.ZipFile(buffer_zip, "w", zipfile.ZIP_DEFLATED) as zf:
-            for nombre_salida, datos in excels:
-                zf.writestr(nombre_salida, datos)
-        buffer_zip.seek(0)
-        st.download_button(
-            label=f"📦 Descargar los {len(excels)} Excel en un ZIP",
-            data=buffer_zip,
-            file_name="tablas_convertidas.zip",
-            mime="application/zip",
+            file_name="tablas_convertidas.xlsx",
+            mime=MIME_XLSX,
             type="primary",
-            key="descargar_zip",
+            key="descargar_combinado",
         )
+    else:
+        excels: list[tuple[str, bytes]] = []
+        for nombre_pdf, tablas in seleccion_por_archivo:
+            nombre_salida = os.path.splitext(nombre_pdf)[0] + ".xlsx"
+            excels.append(
+                (nombre_salida, generar_excel(tablas, modo).getvalue())
+            )
+
+        for i, (nombre_salida, datos) in enumerate(excels):
+            st.download_button(
+                label=f"⬇️ Descargar {nombre_salida}",
+                data=datos,
+                file_name=nombre_salida,
+                mime=MIME_XLSX,
+                type="primary" if len(excels) == 1 else "secondary",
+                key=f"descargar_{i}",
+            )
+
+        if len(excels) > 1:
+            buffer_zip = BytesIO()
+            with zipfile.ZipFile(buffer_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+                for nombre_salida, datos in excels:
+                    zf.writestr(nombre_salida, datos)
+            buffer_zip.seek(0)
+            st.download_button(
+                label=f"📦 Descargar los {len(excels)} Excel en un ZIP",
+                data=buffer_zip,
+                file_name="tablas_convertidas.zip",
+                mime="application/zip",
+                type="primary",
+                key="descargar_zip",
+            )
