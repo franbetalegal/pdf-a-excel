@@ -2,9 +2,14 @@
 
 import gc
 import os
+import subprocess
+import sys
 import tempfile
+import time
 import traceback
+from pathlib import Path
 
+import requests
 import streamlit as st
 
 from exporter import MODO_HOJA_POR_TABLA, MODO_HOJA_UNICA, generar_excel
@@ -12,11 +17,68 @@ from extractor import extraer_tablas
 
 st.set_page_config(page_title="PDF a Excel", page_icon="📄", layout="wide")
 
+CARPETA_APP = Path(__file__).parent
+URL_VERSION_REMOTA = (
+    "https://raw.githubusercontent.com/franbetalegal/pdf-a-excel/main/VERSION"
+)
+
+
+def version_local() -> str | None:
+    try:
+        return (CARPETA_APP / "VERSION").read_text().strip()
+    except OSError:
+        return None
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def version_remota() -> str | None:
+    """Consulta la última versión publicada en GitHub. None si no hay red."""
+    try:
+        respuesta = requests.get(URL_VERSION_REMOTA, timeout=3)
+        if respuesta.ok:
+            return respuesta.text.strip()
+    except Exception:
+        pass
+    return None
+
+
+def avisar_si_hay_actualizacion() -> None:
+    remota = version_remota()
+    local = version_local()
+    if not remota or remota == local:
+        return
+    st.warning(
+        f"🔔 Hay una versión nueva disponible (**{remota}**; "
+        f"esta es la {local or 'sin numerar'})."
+    )
+    if sys.platform == "win32":
+        if st.button("🔄 Actualizar y reiniciar"):
+            # La actualización se aplica fuera de la app (actualizar.bat)
+            # con la app cerrada; el .bat vuelve a lanzar iniciar.bat.
+            subprocess.Popen(
+                ["cmd", "/c", "start", "", "actualizar.bat", "/reiniciar"],
+                cwd=CARPETA_APP,
+            )
+            st.info(
+                "Actualizando… esta ventana se quedará sin conexión unos "
+                "segundos y la aplicación volverá a abrirse sola."
+            )
+            time.sleep(2)
+            os._exit(0)
+    else:
+        st.caption(
+            "Para actualizar: cierra la aplicación y descarga la última "
+            "versión del repositorio."
+        )
+
+
 st.title("📄 Convertidor de PDF a Excel")
 st.markdown(
     "Sube un PDF con tablas **con bordes visibles**, revisa las tablas "
     "detectadas y descarga el resultado en Excel."
 )
+
+avisar_si_hay_actualizacion()
 
 
 @st.cache_data(show_spinner=False)

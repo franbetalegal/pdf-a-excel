@@ -23,5 +23,13 @@ if exist venv\Scripts\python.exe (
 )
 
 echo.
-echo Actualizacion completada. Ya puedes usar "iniciar.bat".
+echo Actualizacion completada.
+
+REM Con /reiniciar (usado por el boton "Actualizar y reiniciar" de la app)
+REM se vuelve a abrir la aplicacion automaticamente.
+if /I "%~1"=="/reiniciar" (
+    start "" iniciar.bat
+    exit /b 0
+)
+echo Ya puedes usar "iniciar.bat".
 pause

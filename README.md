@@ -33,7 +33,9 @@ Para cerrar la aplicación, cierra la ventana del terminal.
 
 ## Actualizar a una nueva versión
 
-En Windows, ejecuta `actualizar.bat`: descarga la última versión desde GitHub y la aplica sin tener que reinstalar nada.
+La aplicación comprueba al arrancar si hay una versión nueva en GitHub y, si la hay, muestra un aviso con el botón **«Actualizar y reiniciar»**: la aplicación se cierra, se actualiza sola y vuelve a abrirse (requiere internet; si no hay conexión, simplemente no aparece el aviso).
+
+También puedes actualizar manualmente ejecutando `actualizar.bat` con la aplicación cerrada.
 
 ## Problemas comunes
 
