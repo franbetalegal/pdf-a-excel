@@ -7,6 +7,8 @@ import sys
 import tempfile
 import time
 import traceback
+import zipfile
+from io import BytesIO
 from pathlib import Path
 
 import requests
@@ -72,15 +74,6 @@ def avisar_si_hay_actualizacion() -> None:
         )
 
 
-st.title("📄 Convertidor de PDF a Excel")
-st.markdown(
-    "Sube un PDF con tablas **con bordes visibles**, revisa las tablas "
-    "detectadas y descarga el resultado en Excel."
-)
-
-avisar_si_hay_actualizacion()
-
-
 @st.cache_data(show_spinner=False)
 def procesar_pdf(contenido: bytes) -> list[dict]:
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
@@ -99,57 +92,84 @@ def procesar_pdf(contenido: bytes) -> list[dict]:
             pass
 
 
-archivo = st.file_uploader("Sube tu PDF", type="pdf")
-
-if archivo is not None:
-    try:
-        with st.spinner("Analizando el PDF y buscando tablas…"):
-            tablas = procesar_pdf(archivo.getvalue())
-    except Exception as exc:
-        if isinstance(exc, ImportError) or "DLL" in str(exc):
-            st.error(
-                "Falta un componente del sistema necesario para analizar "
-                "PDFs (Microsoft Visual C++ Redistributable). Consulta la "
-                "sección «Problemas comunes» del README."
-            )
-        else:
-            st.error(
-                "Ocurrió un error al procesar el PDF. Si el archivo se abre "
-                "bien en otros programas, copia los detalles técnicos de "
-                "abajo y envíalos al responsable de la aplicación."
-            )
-        with st.expander("Detalles técnicos del error"):
-            st.code(traceback.format_exc())
-        st.stop()
-
-    if not tablas:
-        st.warning(
-            "No se ha detectado ninguna tabla. Este convertidor busca tablas "
-            "con bordes/líneas visibles; si tu PDF tiene datos alineados sin "
-            "rejilla, no podrá detectarlos."
+def mostrar_error_de_analisis(exc: Exception) -> None:
+    if isinstance(exc, ImportError) or "DLL" in str(exc):
+        st.error(
+            "Falta un componente del sistema necesario para analizar "
+            "PDFs (Microsoft Visual C++ Redistributable). Consulta la "
+            "sección «Problemas comunes» del README."
         )
-        st.stop()
+    else:
+        st.error(
+            "Ocurrió un error al procesar este PDF. Si el archivo se abre "
+            "bien en otros programas, copia los detalles técnicos de "
+            "abajo y envíalos al responsable de la aplicación."
+        )
+    with st.expander("Detalles técnicos del error"):
+        st.code("".join(traceback.format_exception(exc)))
 
-    st.success(f"Se han detectado **{len(tablas)}** tabla(s).")
 
+st.title("📄 Convertidor de PDF a Excel")
+st.markdown(
+    "Sube uno o varios PDF con tablas **con bordes visibles**, revisa las "
+    "tablas detectadas y descarga el resultado en Excel."
+)
+
+avisar_si_hay_actualizacion()
+
+archivos = st.file_uploader(
+    "Sube tus PDF", type="pdf", accept_multiple_files=True
+)
+
+if archivos:
     st.subheader("1. Revisa y elige qué tablas incluir")
-    seleccionadas = []
-    for t in tablas:
-        etiqueta = (
-            f"Tabla {t['indice']} — página {t['pagina']} "
-            f"(precisión {t['precision']}%)"
-        )
-        with st.expander(etiqueta, expanded=len(tablas) <= 3):
-            incluir = st.checkbox(
-                "Incluir esta tabla en el Excel",
-                value=True,
-                key=f"incluir_{t['indice']}",
-            )
-            st.dataframe(t["df"], width="stretch")
-        if incluir:
-            seleccionadas.append(t)
 
-    st.subheader("2. Elige cómo organizar el Excel")
+    # (nombre_pdf, tablas seleccionadas) por cada archivo analizado con éxito
+    seleccion_por_archivo: list[tuple[str, list[dict]]] = []
+
+    for num_archivo, archivo in enumerate(archivos):
+        st.markdown(f"#### 📕 {archivo.name}")
+        try:
+            with st.spinner(f"Analizando {archivo.name}…"):
+                tablas = procesar_pdf(archivo.getvalue())
+        except Exception as exc:
+            mostrar_error_de_analisis(exc)
+            continue
+
+        if not tablas:
+            st.warning(
+                "No se ha detectado ninguna tabla en este PDF. Este "
+                "convertidor busca tablas con bordes/líneas visibles; si "
+                "el PDF tiene datos alineados sin rejilla, no podrá "
+                "detectarlos."
+            )
+            continue
+
+        st.caption(f"{len(tablas)} tabla(s) detectada(s).")
+        seleccionadas = []
+        for t in tablas:
+            etiqueta = (
+                f"Tabla {t['indice']} — página {t['pagina']} "
+                f"(precisión {t['precision']}%)"
+            )
+            with st.expander(etiqueta, expanded=len(tablas) <= 3):
+                incluir = st.checkbox(
+                    "Incluir esta tabla en el Excel",
+                    value=True,
+                    key=f"incluir_{num_archivo}_{t['indice']}",
+                )
+                st.dataframe(t["df"], width="stretch")
+            if incluir:
+                seleccionadas.append(t)
+
+        if seleccionadas:
+            seleccion_por_archivo.append((archivo.name, seleccionadas))
+
+    if not seleccion_por_archivo:
+        st.info("Selecciona al menos una tabla para generar el Excel.")
+        st.stop()
+
+    st.subheader("2. Elige cómo organizar cada Excel")
     modo_texto = st.radio(
         "Organización de las tablas",
         options=["Una hoja por tabla", "Todas en una sola hoja"],
@@ -162,16 +182,33 @@ if archivo is not None:
     )
 
     st.subheader("3. Descarga")
-    if not seleccionadas:
-        st.info("Selecciona al menos una tabla para generar el Excel.")
-    else:
-        excel = generar_excel(seleccionadas, modo)
-        nombre_salida = os.path.splitext(archivo.name)[0] + ".xlsx"
+    excels: list[tuple[str, bytes]] = []
+    for nombre_pdf, tablas in seleccion_por_archivo:
+        nombre_salida = os.path.splitext(nombre_pdf)[0] + ".xlsx"
+        excels.append((nombre_salida, generar_excel(tablas, modo).getvalue()))
+
+    for i, (nombre_salida, datos) in enumerate(excels):
         st.download_button(
             label=f"⬇️ Descargar {nombre_salida}",
-            data=excel,
+            data=datos,
             file_name=nombre_salida,
             mime="application/vnd.openxmlformats-officedocument"
             ".spreadsheetml.sheet",
+            type="primary" if len(excels) == 1 else "secondary",
+            key=f"descargar_{i}",
+        )
+
+    if len(excels) > 1:
+        buffer_zip = BytesIO()
+        with zipfile.ZipFile(buffer_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+            for nombre_salida, datos in excels:
+                zf.writestr(nombre_salida, datos)
+        buffer_zip.seek(0)
+        st.download_button(
+            label=f"📦 Descargar los {len(excels)} Excel en un ZIP",
+            data=buffer_zip,
+            file_name="tablas_convertidas.zip",
+            mime="application/zip",
             type="primary",
+            key="descargar_zip",
         )
