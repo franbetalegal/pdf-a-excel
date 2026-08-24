@@ -14,13 +14,14 @@ from pathlib import Path
 import requests
 import streamlit as st
 
+from detector import elegir_extractor
 from exporter import (
     MODO_HOJA_POR_TABLA,
     MODO_HOJA_UNICA,
     generar_excel,
     generar_excel_combinado,
 )
-from extractor import extraer_tablas
+from extractor_ocr import extraer_tablas_ocr
 
 st.set_page_config(page_title="PDF a Excel", page_icon="📄", layout="wide")
 
@@ -101,12 +102,15 @@ def avisar_si_hay_actualizacion() -> None:
 
 
 @st.cache_data(show_spinner=False)
-def procesar_pdf(contenido: bytes) -> list[dict]:
+def procesar_pdf(contenido: bytes) -> tuple[bool, list[dict]]:
+    """Devuelve (es_ocr, tablas): es_ocr indica si se usó la rama OCR
+    (PDF escaneado) en vez de Camelot."""
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
         f.write(contenido)
         ruta = f.name
     try:
-        return extraer_tablas(ruta)
+        extraer = elegir_extractor(ruta)
+        return extraer is extraer_tablas_ocr, extraer(ruta)
     finally:
         # En Windows la librería de PDF puede mantener el archivo abierto;
         # liberamos sus objetos y, si sigue bloqueado, lo dejamos en la
@@ -119,7 +123,14 @@ def procesar_pdf(contenido: bytes) -> list[dict]:
 
 
 def mostrar_error_de_analisis(exc: Exception) -> None:
-    if isinstance(exc, ImportError) or "DLL" in str(exc):
+    mensaje = str(exc)
+    if "Tesseract not found" in mensaje or "trainned data cannot be located" in mensaje:
+        st.error(
+            "Este PDF parece un escaneo y hace falta Tesseract OCR para "
+            "leerlo, pero no está instalado en este ordenador. Consulta "
+            "la sección «Problemas comunes» del README para instalarlo."
+        )
+    elif isinstance(exc, ImportError) or "DLL" in mensaje:
         st.error(
             "Falta un componente del sistema necesario para analizar "
             "PDFs (Microsoft Visual C++ Redistributable). Consulta la "
@@ -145,8 +156,9 @@ with col_version:
         unsafe_allow_html=True,
     )
 st.markdown(
-    "Sube uno o varios PDF con tablas **con bordes visibles**, revisa las "
-    "tablas detectadas y descarga el resultado en Excel."
+    "Sube uno o varios PDF —con tablas de bordes visibles o PDF "
+    "escaneados sin bordes—, revisa las tablas detectadas (y corrígelas "
+    "si vienen de un escaneo) y descarga el resultado en Excel."
 )
 
 avisar_si_hay_actualizacion()
@@ -165,34 +177,63 @@ if archivos:
         st.markdown(f"#### 📕 {archivo.name}")
         try:
             with st.spinner(f"Analizando {archivo.name}…"):
-                tablas = procesar_pdf(archivo.getvalue())
+                es_ocr, tablas = procesar_pdf(archivo.getvalue())
         except Exception as exc:
             mostrar_error_de_analisis(exc)
             continue
 
-        if not tablas:
-            st.warning(
-                "No se ha detectado ninguna tabla en este PDF. Este "
-                "convertidor busca tablas con bordes/líneas visibles; si "
-                "el PDF tiene datos alineados sin rejilla, no podrá "
-                "detectarlos."
+        if es_ocr:
+            st.info(
+                "📷 PDF escaneado detectado: usando reconocimiento de "
+                "texto (OCR) local. Revisa y corrige las tablas antes "
+                "de exportar."
             )
+
+        if not tablas:
+            if es_ocr:
+                st.warning(
+                    "No se ha detectado ninguna tabla en este PDF "
+                    "escaneado. Puede deberse a la calidad del escaneo "
+                    "(inclinación, baja resolución) o a que los datos no "
+                    "guardan columnas alineadas."
+                )
+            else:
+                st.warning(
+                    "No se ha detectado ninguna tabla en este PDF. Este "
+                    "convertidor busca tablas con bordes/líneas visibles; "
+                    "si el PDF tiene datos alineados sin rejilla, no podrá "
+                    "detectarlos."
+                )
             continue
 
         st.caption(f"{len(tablas)} tabla(s) detectada(s).")
         seleccionadas = []
         for t in tablas:
-            etiqueta = (
-                f"Tabla {t['indice']} — página {t['pagina']} "
-                f"(precisión {t['precision']}%)"
-            )
+            if t["precision"] is None:
+                etiqueta = (
+                    f"Tabla {t['indice']} — página {t['pagina']} "
+                    "(OCR, revisa antes de exportar)"
+                )
+            else:
+                etiqueta = (
+                    f"Tabla {t['indice']} — página {t['pagina']} "
+                    f"(precisión {t['precision']}%)"
+                )
             with st.expander(etiqueta, expanded=len(tablas) <= 3):
                 incluir = st.checkbox(
                     "Incluir esta tabla en el Excel",
                     value=True,
                     key=f"incluir_{num_archivo}_{t['indice']}",
                 )
-                st.dataframe(t["df"], width="stretch")
+                if es_ocr:
+                    df_editado = st.data_editor(
+                        t["df"],
+                        width="stretch",
+                        key=f"editor_{num_archivo}_{t['indice']}",
+                    )
+                    t = {**t, "df": df_editado}
+                else:
+                    st.dataframe(t["df"], width="stretch")
             if incluir:
                 seleccionadas.append(t)
 
