@@ -1,13 +1,13 @@
 # Convertidor de PDF a Excel
 
-Aplicación web local que extrae tablas de PDFs (tablas con bordes visibles) y las exporta a Excel. Todo se ejecuta en tu ordenador; no se sube nada a internet.
+Aplicación web local que extrae tablas de PDFs, tanto con bordes visibles como escaneadas sin bordes (vía OCR local), y las exporta a Excel. Todo se ejecuta en tu ordenador; no se sube nada a internet.
 
 ## Requisitos
 
 - **Windows:** ninguno. El instalador descarga Python automáticamente si no está instalado, en modo "solo para este usuario" — **no hacen falta permisos de administrador**. Solo se necesita conexión a internet durante la instalación.
 - **macOS:** Python 3.10 o superior ([python.org](https://www.python.org/downloads/), puede instalarse sin admin).
 
-Sin Ghostscript ni ninguna otra dependencia de sistema.
+Sin Ghostscript ni ninguna otra dependencia de sistema. (Para PDF escaneados hace falta Tesseract OCR — ver la sección «PDF escaneados» más abajo.)
 
 ## Instalación
 
@@ -20,6 +20,27 @@ El script instala Python si hace falta (solo en tu perfil de usuario) y crea un 
 
 > **Windows:** si SmartScreen muestra un aviso al ejecutar el script, pulsa «Más información» → «Ejecutar de todas formas».
 > **macOS:** si aparece un aviso de seguridad, haz clic derecho sobre el archivo → «Abrir».
+
+## PDF escaneados (sin bordes de tabla)
+
+Además de tablas con bordes visibles, la aplicación puede leer PDF
+escaneados (imagen, sin texto seleccionable) cuyas tablas no tienen
+líneas dibujadas pero sí columnas alineadas. Para esto usa OCR local
+(Tesseract) — el documento no sale de tu ordenador en ningún momento.
+
+Como el OCR no es infalible (letra borrosa, sellos, escaneo torcido),
+la app muestra la tabla detectada en una rejilla editable para corregirla
+antes de exportar a Excel.
+
+**Requiere tener Tesseract OCR instalado:**
+
+- **Windows:** instalar desde [UB-Mannheim/tesseract](https://github.com/UB-Mannheim/tesseract/wiki) (incluye datos de idioma español si se marca esa opción durante la instalación).
+- **macOS:** `brew install tesseract tesseract-lang`
+- **Linux:** `sudo apt install tesseract-ocr tesseract-ocr-spa`
+
+Si Tesseract no está instalado, la app sigue funcionando con normalidad
+para PDF con tablas de bordes visibles; solo al subir un PDF escaneado
+avisará de que falta instalarlo.
 
 ## Uso
 
@@ -45,5 +66,5 @@ También puedes actualizar manualmente con la aplicación cerrada: `actualizar.b
 
 ## Limitaciones
 
-- Solo detecta tablas **con bordes/líneas visibles** (modo *lattice* de Camelot). Los datos alineados sin rejilla no se detectan.
-- No funciona con PDFs escaneados (imágenes); el PDF debe contener texto real.
+- PDF digitales: solo detecta tablas **con bordes/líneas visibles** (modo *lattice* de Camelot). Los datos alineados sin rejilla no se detectan en esta rama.
+- PDF escaneados: requiere columnas alineadas por posición y Tesseract instalado; la precisión del OCR depende de la calidad del escaneo, por eso la tabla es editable antes de exportar.
