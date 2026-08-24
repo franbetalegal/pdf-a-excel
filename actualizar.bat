@@ -22,6 +22,29 @@ if exist venv\Scripts\python.exe (
     venv\Scripts\python -m pip install -q -r requirements.txt
 )
 
+echo Comprobando Tesseract OCR ^(necesario para PDF escaneados^)...
+where tesseract >nul 2>nul
+if errorlevel 1 (
+    where winget >nul 2>nul
+    if errorlevel 1 (
+        echo AVISO: no se encontro "winget" en este ordenador para instalar Tesseract automaticamente.
+        echo Instalalo manualmente desde https://github.com/UB-Mannheim/tesseract/wiki
+        echo o consulta la seccion "PDF escaneados" del README.md. La app funciona igual con PDF de bordes visibles sin esto.
+    ) else (
+        echo Instalando Tesseract OCR con winget...
+        winget install --id UB-Mannheim.TesseractOCR -e --silent --accept-package-agreements --accept-source-agreements
+        if errorlevel 1 (
+            echo AVISO: no se pudo instalar Tesseract automaticamente con winget.
+            echo Instalalo manualmente desde https://github.com/UB-Mannheim/tesseract/wiki
+            echo o consulta la seccion "PDF escaneados" del README.md.
+        ) else (
+            echo Tesseract OCR instalado correctamente.
+        )
+    )
+) else (
+    echo Tesseract OCR ya esta instalado.
+)
+
 REM Evita que Streamlit pida un email en el primer arranque.
 if not exist "%USERPROFILE%\.streamlit" mkdir "%USERPROFILE%\.streamlit"
 if not exist "%USERPROFILE%\.streamlit\credentials.toml" (

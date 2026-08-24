@@ -16,6 +16,17 @@ echo "Instalando dependencias (puede tardar unos minutos)…"
 ./venv/bin/pip install --upgrade pip
 ./venv/bin/pip install -r requirements.txt
 
+echo "Comprobando Tesseract OCR (necesario para PDF escaneados)…"
+if command -v tesseract &>/dev/null; then
+    echo "Tesseract OCR ya está instalado."
+elif command -v brew &>/dev/null; then
+    echo "Instalando Tesseract OCR con Homebrew…"
+    brew install tesseract tesseract-lang || echo "AVISO: no se pudo instalar Tesseract automáticamente. Instálalo con 'brew install tesseract tesseract-lang' o consulta la sección «PDF escaneados» del README."
+else
+    echo "AVISO: no se encontró Homebrew, así que no se puede instalar Tesseract automáticamente."
+    echo "Instálalo con Homebrew (https://brew.sh) y 'brew install tesseract tesseract-lang', o consulta la sección «PDF escaneados» del README. La app funciona igualmente con PDF de bordes visibles sin esto."
+fi
+
 # Evita que Streamlit pida un email en el primer arranque.
 if [ ! -f "$HOME/.streamlit/credentials.toml" ]; then
     mkdir -p "$HOME/.streamlit"

@@ -32,7 +32,11 @@ Como el OCR no es infalible (letra borrosa, sellos, escaneo torcido),
 la app muestra la tabla detectada en una rejilla editable para corregirla
 antes de exportar a Excel.
 
-**Requiere tener Tesseract OCR instalado:**
+**Requiere tener Tesseract OCR instalado.** `instalar.bat`/`instalar.command`
+y `actualizar.bat`/`actualizar.command` intentan instalarlo automáticamente:
+en Windows con `winget` (si está disponible en el sistema) y en macOS con
+Homebrew (si está instalado). Si no se puede instalar solo, muestran un
+aviso y hace falta instalarlo a mano:
 
 - **Windows:** instalar desde [UB-Mannheim/tesseract](https://github.com/UB-Mannheim/tesseract/wiki) (incluye datos de idioma español si se marca esa opción durante la instalación).
 - **macOS:** `brew install tesseract tesseract-lang`
